@@ -18,6 +18,9 @@ if (symbolAddress == undefined) {
     send({ "deviError": "No symbole found named: " + symboleInput })
 }
 
+symbolAddress = new NativePointer(symbolAddress)
+
+console.log(myModule.name, symbolAddress)
 
 if (myModule != null) {
     myModule.end = parseInt(myModule.base, 16) + myModule.size;

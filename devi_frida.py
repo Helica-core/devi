@@ -12,12 +12,14 @@ import frida
 
 class Devi:
 
-    def __init__(self, binary, traced_module, out_file, symbol, pid=None, kill=False, verbose=False, debug=False):
+    def __init__(self, binary, traced_module, out_file, symbol, pid=None, application=None, device=None, kill=False, verbose=False, debug=False):
         self.version = 0.2
         self.binary = binary
         self.traced_module = traced_module
         self.out_file = out_file
         self.pid = pid
+        self.application = application
+        self.device = device
         self.session = None
         self.calls = list()
         self.error = False
@@ -60,22 +62,31 @@ class Devi:
         script.load()
         # only resume if spawed
         # if we resume before we load the script we can not intercept main 
-        try:
-            frida.resume(int(self.pid))
-        except frida.InvalidArgumentError:
-            pass
+        #try:
+        #    frida.resume(int(self.pid))
+        #except frida.InvalidArgumentError:
+        #    pass
 
     def spawn_binary(self):
+        target_frida = frida
 
-        if not self.pid:
+        if self.device:
+            target_frida = frida.get_device(self.device)
+        
+        if not self.pid and not self.application:
             if self.binary[:2] == './':
                 self.binary = self.binary[2:]
 
             self.pid = frida.spawn(self.binary)
             self.debug("Spawned binay {} with pid {}".format(self.binary, self.pid))
-        self.pid = int(self.pid)
-        self.session = frida.attach(self.pid)
-        self.debug("Attached to process {}".format(self.pid))
+       
+        elif self.pid:
+            self.session = target_frida.attach(self.pid)
+
+        elif self.application:
+            self.session = target_frida.attach(self.application)
+        
+        self.debug("Attached to process")
 
         self.load_script()
 
@@ -91,12 +102,13 @@ class Devi:
 
         try:
             self.log('Detaching, this might take a second...')
-            if self.kill:
-                frida.kill(self.pid)
-                self.log('Killing process {}'.format(self.pid))
+        #    if self.kill:
+        #        frida.kill(self.pid)
+        #        self.log('Killing process {}'.format(self.pid))
             self.session.detach()
         except frida.ProcessNotFoundError:
             self.log('Process already terminated')
+
         self.debug("Call Overview:")
         self.debug(str(self.calls))
 
@@ -124,11 +136,24 @@ class Devi:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Devirtualize Virtual Calls",
-        usage="\tdevi_frida.py -m <traced_module_name> -o <JSON_output> -- <software_to_trace> <arguments for binary>\n"+
-            "\tdevi_frida.py -m <traced_module_name> -s <sysmbol_to_hook> -o <JSON_output> -p <pid_of_target>")
-    parser.add_argument("-o", "--out-file",
-                      help="Output location", required=True)
+    usage = """\tdevi_frida.py
+        -m\ttraced module name
+        -s\tsymbol(function) to hook
+        -o\tjson output
+        -d\tfrida device id (frida-ls-device)
+        -a\ttarget package name
+        -p\ttarget pid
+        -v/-vv\tdebug info
+        -k\tkill process
+
+    example:
+    
+    """
+    parser = argparse.ArgumentParser(description="Devirtualize Virtual Calls", usage=usage)
+    
+    parser.add_argument(
+        "-o", "--out-file", help="Output location", required=True)
+    
     parser.add_argument(
         "-m", "--module", help="Module to trace", required=True)
 
@@ -136,12 +161,20 @@ if __name__ == '__main__':
         "-p", "--pid", help="Attach to PID", required=False)
 
     parser.add_argument(
+        "-d", "--device", help="Target frida device id", required=False)
+
+    parser.add_argument(
+        "-a", "--application", help="Target Package name for Android", required=False)
+
+    parser.add_argument(
         "-s", "--symbol", help="Hook symbol, default main, either offset or mangled name!", required=False, default="main")
 
     parser.add_argument(
         "-v", "--verbose", help="Set verbose logging", required=False, action='store_true')
+
     parser.add_argument(
         "-vv", "--debug", help="Set debug logging", required=False, action='store_true')
+
     parser.add_argument(
         "-k", "--kill", help="Kill process after detach", required=False, action='store_true')
 
@@ -157,11 +190,14 @@ if __name__ == '__main__':
             parser.print_help()
             exit(1)
         args.cmdline = args.cmdline[1:]
-    elif not args.pid:
+    elif not args.pid and not args.application:
         parser.print_help()
         target = None
         exit(1)
+    elif args.pid and args.application:
+        print("conflit -p and -a argument")
+        exit(1)
 
     devi = Devi(args.cmdline, args.module, args.out_file, args.symbol, 
-        args.pid, args.kill, args.verbose, args.debug)
+        args.pid, args.application, args.device, args.kill, args.verbose, args.debug)
     devi.spawn_binary()
