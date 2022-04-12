@@ -14,6 +14,19 @@ Devi is a simple tool that uses runtime information to devirtualize virtual call
 
 Devi consits of two components, one for dynamic analysis (DBI)  and one for static analysis (disassembler). 
 
+```
+usage: 	devi_frida.py
+        -m	traced module name
+        -s	symbol(function) to hook
+        -o	json output
+        -d	frida device id (frida-ls-device)
+        -a	target package name
+        -p	target pid
+        -v/-vv	debug info
+        -k	kill process
+
+```
+
 ### Running the Frida Tracer
 
 #### Minimal Command Line
