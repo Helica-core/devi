@@ -2,15 +2,6 @@
 
 Devi is a simple tool that uses runtime information to devirtualize virtual calls in c++ binaries. 
 
-## patch
-### TODO:
-1. support attach usb device/remote device
-2. only hook virtual function call. do not hook normal function call
-3. support cref/comment for library function
-4. optimal aarch64 cref
-5. static anlysis: extract rtti information
-
-
 ## Usage
 
 Devi consits of two components, one for dynamic analysis (DBI)  and one for static analysis (disassembler). 
